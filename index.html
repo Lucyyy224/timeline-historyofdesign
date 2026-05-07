@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Design History Timeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: #f4f4f0;
+    color: #111;
+    padding: 60px 40px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    color: #888;
+    font-size: 13px;
+    margin: 8px 0 40px;
+    letter-spacing: 1px;
+  }
+
+  /* ============ HORIZONTAL TIMELINE RIBBON ============ */
+  .ribbon-wrap {
+    position: relative;
+    overflow-x: auto;
+    padding: 80px 0;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .ribbon {
+    position: relative;
+    width: 2400px;
+    height: 280px;
+    margin: 0 auto;
+  }
+  .ribbon::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 30px;
+    right: 30px;
+    height: 1.5px;
+    background: #111;
+  }
+  .node {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .node:hover { transform: translate(-50%, -50%) scale(1.1); }
+  .node:hover .dot { background: #444; }
+  .dot {
+    width: 16px;
+    height: 16px;
+    background: #111;
+    border-radius: 50%;
+    margin: 0 auto;
+    transition: background .15s ease;
+  }
+  .dot.lg { width: 24px; height: 24px; }
+  .dot.xl { width: 32px; height: 32px; }
+  .label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    text-align: center;
+    pointer-events: none;
+  }
+  .label.up { bottom: calc(50% + 22px); }
+  .label.dn { top: calc(50% + 22px); }
+  .label .num {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #111;
+  }
+  .label .yr {
+    color: #999;
+    font-size: 12px;
+  }
+  .stem {
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    background: #bbb;
+  }
+  .stem.up { bottom: calc(50% + 8px); height: 14px; }
+  .stem.dn { top: calc(50% + 8px); height: 14px; }
+  .hint {
+    text-align: center;
+    color: #aaa;
+    font-size: 12px;
+    margin-top: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* ============ MODAL ============ */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, .55);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 24px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 1080px;
+    padding: 36px 40px 40px;
+    position: relative;
+    box-shadow: 0 12px 40px rgba(0,0,0,.25);
+  }
+  .close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #111;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    transition: background .15s ease;
+  }
+  .close:hover { background: #111; color: #fff; border-color: #111; }
+  .m-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    border-bottom: 2px solid #111;
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+  }
+  .m-num {
+    font-size: 38px;
+    font-weight: 200;
+    line-height: 1;
+  }
+  .m-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .m-yrs {
+    color: #888;
+    font-size: 13px;
+    margin-left: auto;
+    letter-spacing: 1px;
+  }
+  .intro {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #222;
+    margin-bottom: 28px;
+  }
+  .works {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 900px) { .works { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px) { .works { grid-template-columns: repeat(2, 1fr); } }
+  .work {
+    border: 1px solid #e2e2dd;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+  }
+  .img-box {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #f5f5f0;
+    border-bottom: 1px solid #e2e2dd;
+    position: relative;
+    overflow: hidden;
+  }
+  .img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .img-fallback {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(45deg, transparent 0 8px, rgba(0,0,0,.04) 8px 9px),
+      #efefea;
+    color: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 14px;
+  }
+  .img-fallback::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    border: 1px solid rgba(0,0,0,.18);
+    pointer-events: none;
+  }
+  .img-fallback .fname {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.3;
+    max-width: 80%;
+  }
+  .img-fallback .fyr {
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #666;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
+  }
+  .work .meta {
+    padding: 12px 14px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .work .name {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .work .info { color: #555; font-size: 11.5px; }
+  .work .info b { color: #222; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Design History Timeline</h1>
+<div class="subtitle">Industrial Revolution → Postmodernism · 5 key works per period</div>
+
+<div class="ribbon-wrap">
+  <div class="ribbon">
+    <div class="node" data-id="p1" style="left: 4%;">
+      <div class="label up"><div class="num">1. Industrial Revolution</div><div class="yr">1760–1850</div></div>
+      <div class="stem up"></div><div class="dot"></div>
+    </div>
+    <div class="node" data-id="p2" style="left: 13%;">
+      <div class="stem dn"></div><div class="dot"></div>
+      <div class="label dn"><div class="num">2. Arts and Crafts</div><div class="yr">1860–1900</div></div>
+    </div>
+    <div class="node" data-id="p3" style="left: 23%;">
+      <div class="label up"><div class="num">3. Art Nouveau</div><div class="yr">1890–1910</div></div>
+      <div class="stem up"></div><div class="dot"></div>
+    </div>
+    <div class="node" data-id="p4" style="left: 33%;">
+      <div class="stem dn"></div><div class="dot lg"></div>
+      <div class="label dn"><div class="num">4. Art Deco (French)</div><div class="yr">1920–1935</div></div>
+    </div>
+    <div class="node" data-id="p5" style="left: 42%;">
+      <div class="label up"><div class="num">5. Modernism & Bauhaus</div><div class="yr">1919–1935</div></div>
+      <div class="stem up"></div><div class="dot lg"></div>
+    </div>
+    <div class="node" data-id="p6" style="left: 51%;">
+      <div class="stem dn"></div><div class="dot"></div>
+      <div class="label dn"><div class="num">6. American Art Deco</div><div class="yr">1925–1939</div></div>
+    </div>
+    <div class="node" data-id="p7" style="left: 60%;">
+      <div class="label up"><div class="num">7. Streamlining</div><div class="yr">1930–1945</div></div>
+      <div class="stem up"></div><div class="dot lg"></div>
+    </div>
+    <div class="node" data-id="p8" style="left: 71%;">
+      <div class="stem dn"></div><div class="dot lg"></div>
+      <div class="label dn"><div class="num">8. Postwar US</div><div class="yr">1945–1960</div></div>
+    </div>
+    <div class="node" data-id="p9" style="left: 82%;">
+      <div class="label up"><div class="num">9. Pop</div><div class="yr">1960–1975</div></div>
+      <div class="stem up"></div><div class="dot"></div>
+    </div>
+    <div class="node" data-id="p10" style="left: 94%;">
+      <div class="stem dn"></div><div class="dot xl"></div>
+      <div class="label dn"><div class="num">10. Postmodernism</div><div class="yr">1970–2000</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="hint">click any node to view details</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modal">
+    <button class="close" id="closeBtn" aria-label="close">×</button>
+    <div class="m-head">
+      <div class="m-num" id="mNum"></div>
+      <div class="m-title" id="mTitle"></div>
+      <div class="m-yrs" id="mYrs"></div>
+    </div>
+    <div class="intro" id="mIntro"></div>
+    <div class="works" id="mWorks"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {
+  p1: {
+    num: '01', title: 'Industrial Revolution', yrs: '1760 – 1850',
+    intro: 'A shift from handcraft to machine production in late 18th to 19th century Britain. Steam power enabled mass manufacturing, making goods cheaper but lower in quality — and turning design into a social issue for the first time. The 1851 Great Exhibition in London showcased Britain\'s industrial might and exposed the aesthetic crisis of machine-made goods, setting the stage for later reform movements.',
+    works: [
+      { name:'Crystal Palace', author:'Joseph Paxton', place:'Hyde Park, London', year:'1851' },
+      { name:'Tea Set', author:'Henry Cole', place:'England', year:'1846' },
+      { name:'Pugin Table', author:'A.W.N. Pugin', place:'England', year:'1847' },
+      { name:'Iron Bridge', author:'Abraham Darby III', place:'Coalbrookdale, England', year:'1779' },
+      { name:'No. 14 Bentwood Chair', author:'Michael Thonet', place:'Vienna, Austria', year:'1859' },
+    ]
+  },
+  p2: {
+    num: '02', title: 'Arts and Crafts', yrs: '1860 – 1900',
+    intro: 'A reaction against industrial production seen as ugly and dishonest. William Morris and his circle returned to handcraft, natural ornament, and the "honest" structure of Gothic. They believed design should reform society — making design, for the first time, a social and moral project.',
+    works: [
+      { name:'Sussex Chair', author:'William Morris', place:'England', year:'1865' },
+      { name:'Acanthus Wallpaper', author:'William Morris', place:'England', year:'1874' },
+      { name:'Red House', author:'Philip Webb / William Morris', place:'Bexleyheath, England', year:'1859' },
+      { name:'Hill House Ladder-Back Chair', author:'Charles Rennie Mackintosh', place:'Helensburgh, Scotland', year:'1902' },
+      { name:'Morris Armchair', author:'Gustav Stickley', place:'New York, USA', year:'1901' },
+    ]
+  },
+  p3: {
+    num: '03', title: 'Art Nouveau', yrs: '1890 – 1910',
+    intro: 'Inspired by nature, plants, and Japanese woodblock prints — flowing organic lines, with the female figure as a symbol of beauty and nature. Color lithography turned posters into the first mass medium of design. The ideal of Gesamtkunstwerk ("total work of art") sought to unify architecture, furniture, and decoration into a single designed environment.',
+    works: [
+      { name:'JOB Poster', author:'Alphonse Mucha', place:'Paris, France', year:'1896' },
+      { name:'Hôtel Tassel', author:'Victor Horta', place:'Brussels, Belgium', year:'1893' },
+      { name:'Paris Métro Entrance', author:'Hector Guimard', place:'Paris, France', year:'1900' },
+      { name:'Casa Batlló', author:'Antoni Gaudí', place:'Barcelona, Spain', year:'1904' },
+      { name:'Wisteria Lamp', author:'L.C. Tiffany / Clara Driscoll', place:'New York, USA', year:'1901' },
+    ]
+  },
+  p4: {
+    num: '04', title: 'Art Deco (French)', yrs: '1920 – 1935',
+    intro: 'Named after the 1925 Paris Exposition Internationale des Arts Décoratifs et Industriels Modernes. French Art Deco celebrated luxury, geometry, and rare materials — ivory, lacquer, exotic hardwoods — and freely borrowed Egyptian and African motifs. It was a fully handcrafted modernity made for the elite.',
+    works: [
+      { name:'Dressing Table', author:'Jacques-Émile Ruhlmann', place:'Paris, France', year:'1925' },
+      { name:'Vanity Case', author:'Cartier', place:'Paris, France', year:'1925' },
+      { name:'Lacquer Screen', author:'Eileen Gray', place:'Paris, France', year:'1923' },
+      { name:'"Victoire" Hood Ornament', author:'René Lalique', place:'France', year:'1928' },
+      { name:'Tamara in the Green Bugatti', author:'Tamara de Lempicka', place:'Paris, France', year:'1929' },
+    ]
+  },
+  p5: {
+    num: '05', title: 'Modernism & Bauhaus', yrs: '1919 – 1935',
+    intro: 'Walter Gropius founded the Bauhaus in Weimar in 1919, fusing art, craft, and technology in service of society. Steel, glass, and concrete replaced ornament; function, geometric reason, and mass production became the new doctrines. In France, Le Corbusier pushed "the house is a machine for living in" into architecture, anchoring European Modernism alongside the Bauhaus.',
+    works: [
+      { name:'Bauhaus Building', author:'Walter Gropius', place:'Dessau, Germany', year:'1926' },
+      { name:'Wassily Armchair', author:'Marcel Breuer', place:'Bauhaus, Germany', year:'1925' },
+      { name:'Frankfurt Kitchen', author:'Margarete Schütte-Lihotzky', place:'Frankfurt, Germany', year:'1926' },
+      { name:'Villa Savoye', author:'Le Corbusier', place:'Poissy, France', year:'1931' },
+      { name:'Red and Blue Chair', author:'Gerrit Rietveld', place:'Utrecht, Netherlands', year:'1923' },
+    ]
+  },
+  p6: {
+    num: '06', title: 'American Art Deco', yrs: '1925 – 1939',
+    intro: 'French handcrafted luxury arrived in America and was rewritten by industrialization, mass production, and steel-aluminum-glass. Skyscrapers became the grandest stage — New York\'s 1916 zoning law required stepped setbacks, perfectly matching Deco\'s vertical geometry. After the Depression, the WPA carried Deco aesthetics into post offices, dams, and public murals.',
+    works: [
+      { name:'Empire State Building', author:'Shreve, Lamb & Harmon', place:'New York, USA', year:'1931' },
+      { name:'Skyscraper Bookcase', author:'Paul T. Frankl', place:'New York, USA', year:'1927' },
+      { name:'Rural Electrification Poster', author:'Lester Beall', place:'USA', year:'1937' },
+      { name:'Chrysler Building', author:'William Van Alen', place:'New York, USA', year:'1930' },
+      { name:'Hoover Dam', author:'Gordon Kaufmann', place:'Nevada / Arizona, USA', year:'1936' },
+    ]
+  },
+  p7: {
+    num: '07', title: 'American Streamlining', yrs: '1930 – 1945',
+    intro: 'Originally aerodynamic shapes for planes and trains, streamlining was lent by the "Big Four" industrial designers (Loewy, Bel Geddes, Dreyfuss, Teague) to entirely stationary household appliances — packaging "tomorrow" as something consumers could buy. Loewy\'s MAYA principle — Most Advanced Yet Acceptable — explained how futuristic styling could restart Depression-era markets.',
+    works: [
+      { name:'Pencil Sharpener', author:'Raymond Loewy', place:'USA', year:'1934' },
+      { name:'Coldspot Refrigerator', author:'Raymond Loewy / Sears', place:'USA', year:'1934' },
+      { name:'Model 302 Telephone', author:'Henry Dreyfuss', place:'Bell, USA', year:'1937' },
+      { name:'Pioneer Zephyr', author:'Edward G. Budd Co.', place:'USA', year:'1934' },
+      { name:'Airstream Clipper', author:'Wally Byam', place:'USA', year:'1936' },
+    ]
+  },
+  p8: {
+    num: '08', title: 'Postwar US', yrs: '1945 – 1960',
+    intro: 'Wartime processes — molded plywood, fiberglass, injection-molded plastics — were rapidly redirected to consumer goods. MoMA\'s "Machine Art" and "Good Design" shows ushered industrial products into museums and retail floors; Levittown and the GE kitchen carried modern design into suburban middle-class homes. Eames and Saarinen are the central figures of this generation.',
+    works: [
+      { name:'DAR Fiberglass Chair', author:'Charles & Ray Eames', place:'Herman Miller, USA', year:'1948' },
+      { name:'Tulip Chair', author:'Eero Saarinen', place:'Knoll, USA', year:'1957' },
+      { name:'Case Study House #8', author:'Charles & Ray Eames', place:'Pacific Palisades, CA', year:'1949' },
+      { name:'Coffee Table IN-50', author:'Isamu Noguchi', place:'Herman Miller, USA', year:'1947' },
+      { name:'Marshmallow Sofa', author:'George Nelson Associates', place:'Herman Miller, USA', year:'1956' },
+    ]
+  },
+  p9: {
+    num: '09', title: 'Pop in the US', yrs: '1960 – 1975',
+    intro: 'The 1960s counterculture, civil rights, the Space Race, anti-war and environmental movements turned "young, cheap, disposable" into a new design language. Bean bags, cardboard chairs, and inflatables broke the modernist creed that "durability equals virtue." Psychedelic posters and Earth Day prints made design, for the first time, broadly political.',
+    works: [
+      { name:'Sacco Bean Bag Chair', author:'Gatti, Paolini & Teodoro', place:'Zanotta, Italy', year:'1968' },
+      { name:'Joe Sofa', author:"De Pas, D'Urbino, Lomazzi", place:'Poltronova, Italy', year:'1970' },
+      { name:'Spotty Cardboard Chair', author:'Peter Murdoch', place:'UK', year:'1963' },
+      { name:'Ball Chair', author:'Eero Aarnio', place:'Asko, Finland', year:'1963' },
+      { name:"Campbell's Soup Cans", author:'Andy Warhol', place:'New York, USA', year:'1962' },
+    ]
+  },
+  p10: {
+    num: '10', title: 'Postmodernism', yrs: '1970 – 2000',
+    intro: 'Skepticism, parody, and deconstruction aimed at modernism\'s "form follows function" and "less is more." "Less is a bore," declared Venturi. Italy\'s Studio Alchimia and Memphis used plastic laminate, classical orders, and cartoon color to attack elite taste. Afrofuturism and women and Black creators wrote pluralism into design history.',
+    works: [
+      { name:'Poltrona di Proust', author:'Alessandro Mendini', place:'Studio Alchimia, Italy', year:'1978' },
+      { name:'Vanna Venturi House', author:'Robert Venturi', place:'Chestnut Hill, Philadelphia', year:'1964' },
+      { name:'Whistling Bird Teakettle (9093)', author:'Michael Graves', place:'Alessi, Italy', year:'1985' },
+      { name:'Carlton Bookcase', author:'Ettore Sottsass / Memphis', place:'Milan, Italy', year:'1981' },
+      { name:'AT&T Building (Sony Tower)', author:'Philip Johnson / John Burgee', place:'New York, USA', year:'1984' },
+    ]
+  }
+};
+
+// Image extension map — matches the actual files in /images
+const EXT = {
+  'p1-1':'jpg', 'p1-2':'jpg',  'p1-3':'jpg', 'p1-4':'jpeg','p1-5':'png',
+  'p2-1':'jpeg','p2-2':'jpg',  'p2-3':'jpg', 'p2-4':'jpg', 'p2-5':'jpg',
+  'p3-1':'jpg', 'p3-2':'jpg',  'p3-3':'webp','p3-4':'jpg', 'p3-5':'jpeg',
+  'p4-1':'jpeg','p4-2':'jpg',  'p4-3':'jpg', 'p4-4':'jpg', 'p4-5':'jpeg',
+  'p5-1':'jpg', 'p5-2':'jpeg', 'p5-3':'jpg', 'p5-4':'webp','p5-5':'jpg',
+  'p6-1':'jpg', 'p6-2':'jpg',  'p6-3':'jpg', 'p6-4':'jpg', 'p6-5':'webp',
+  'p7-1':'jpg', 'p7-2':'jpeg', 'p7-3':'jpg', 'p7-4':'jpeg','p7-5':'png',
+  'p8-1':'png', 'p8-2':'jpg',  'p8-3':'jpg', 'p8-4':'jpg', 'p8-5':'jpg',
+  'p9-1':'png', 'p9-2':'png',  'p9-3':'jpg', 'p9-4':'png', 'p9-5':'png',
+  'p10-1':'png','p10-2':'jpg', 'p10-3':'png','p10-4':'png','p10-5':'jpg',
+};
+
+Object.keys(DATA).forEach(pid => {
+  DATA[pid].works.forEach((w, i) => {
+    const key = `${pid}-${i+1}`;
+    w.img = `images/${key}.${EXT[key]}`;
+  });
+});
+
+const modalBg = document.getElementById('modalBg');
+const closeBtn = document.getElementById('closeBtn');
+
+function openPeriod(id) {
+  const d = DATA[id];
+  if (!d) return;
+  document.getElementById('mNum').textContent = d.num;
+  document.getElementById('mTitle').textContent = d.title;
+  document.getElementById('mYrs').textContent = d.yrs;
+  document.getElementById('mIntro').textContent = d.intro;
+  const wrap = document.getElementById('mWorks');
+  wrap.innerHTML = '';
+  d.works.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'work';
+    el.innerHTML = `
+      <div class="img-box">
+        <img src="${w.img}" alt="${w.name}" />
+        <div class="img-fallback">
+          <div class="fname">${w.name}</div>
+          <div class="fyr">${w.year}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="name">${w.name}</div>
+        <div class="info"><b>${w.author}</b></div>
+        <div class="info">${w.place} · ${w.year}</div>
+      </div>`;
+    const fb = el.querySelector('.img-fallback');
+    const im = el.querySelector('img');
+    fb.style.display = 'none';
+    im.addEventListener('error', () => {
+      im.style.display = 'none';
+      fb.style.display = 'flex';
+    });
+    im.addEventListener('load', () => {
+      if (im.naturalWidth === 0 || im.naturalHeight === 0) {
+        im.style.display = 'none';
+        fb.style.display = 'flex';
+      }
+    });
+    wrap.appendChild(el);
+  });
+  modalBg.classList.add('open');
+}
+function closeModal() { modalBg.classList.remove('open'); }
+
+document.querySelectorAll('.node').forEach(n => {
+  n.addEventListener('click', () => openPeriod(n.dataset.id));
+});
+closeBtn.addEventListener('click', closeModal);
+modalBg.addEventListener('click', (e) => { if (e.target === modalBg) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+</script>
+
+</body>
+</html>
